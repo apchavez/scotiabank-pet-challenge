@@ -1,0 +1,178 @@
+{
+  "info": {
+    "name": "pet-challenge",
+    "description": "Scotiabank Ssr Backend Developer Technical Interview — Pet Challenge API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "petId",
+      "value": "10"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Get Pet",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Api-Key", "value": "{{apiKey}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/pet/{{petId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "pet", "{{petId}}"]
+        },
+        "description": "Consume GET /pet/{petId} de Petstore y devuelve id, name, status."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('body has id, name, status', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('id');",
+              "    pm.expect(body).to.have.property('name');",
+              "    pm.expect(body).to.have.property('status');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Get Pet (not found)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Api-Key", "value": "{{apiKey}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/pet/999999999",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "pet", "999999999"]
+        },
+        "description": "petId inexistente en Petstore — debe responder 404 controlado, no 500."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 404', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Create Pet",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Api-Key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 100000023,\n  \"status\": \"available\",\n  \"name\": \"testingPet1\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/pet",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "pet"]
+        },
+        "description": "Crea un pet en Petstore. Responde transactionId (UUIDv4) y dateCreated generados en la capa service."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('body has transactionId and dateCreated', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('transactionId');",
+              "    pm.expect(body).to.have.property('dateCreated');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Create Pet (validation error)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Api-Key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 1,\n  \"status\": \"\",\n  \"name\": \"\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/pet",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "pet"]
+        },
+        "description": "Body inválido (status/name vacíos) — debe responder 400 con detalle de campos."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Api-Key", "value": "{{apiKey}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["actuator", "health"]
+        },
+        "description": "Health check (Actuator)."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200 and UP', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().status).to.eql('UP');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
