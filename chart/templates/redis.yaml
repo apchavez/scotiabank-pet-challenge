@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pet-challenge-redis
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pet-challenge-redis
+  template:
+    metadata:
+      labels:
+        app: pet-challenge-redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.redis.containerPort }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.redis.containerPort }}
+            initialDelaySeconds: {{ .Values.redis.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.probes.readiness.periodSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.redis.containerPort }}
+            initialDelaySeconds: {{ .Values.redis.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.probes.liveness.periodSeconds }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pet-challenge-redis
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: pet-challenge-redis
+  ports:
+    - port: {{ .Values.redis.containerPort }}
+      targetPort: {{ .Values.redis.containerPort }}
