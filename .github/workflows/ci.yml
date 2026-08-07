@@ -124,7 +124,7 @@ jobs:
         run: kind load docker-image pet-challenge:local --name chart-testing
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: Deploy chart
         run: helm upgrade --install pet-challenge ./chart --namespace pet-challenge --create-namespace --wait --timeout=120s
