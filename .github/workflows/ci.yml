@@ -80,23 +80,49 @@ jobs:
         if: failure()
         run: cat app.log
 
-  terraform-validate:
+  k8s-smoke-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform
     steps:
       - uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.15.7'
+      - name: Create ephemeral kind cluster
+        uses: helm/kind-action@v1
 
-      - name: terraform fmt
-        run: terraform fmt -check -diff
+      - name: Build app image
+        run: docker build -t pet-challenge:local .
 
-      - name: terraform init (no backend)
-        run: terraform init -backend=false
+      - name: Load image into kind
+        run: kind load docker-image pet-challenge:local
 
-      - name: terraform validate
-        run: terraform validate
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Deploy chart
+        run: helm upgrade --install pet-challenge ./chart --namespace pet-challenge --create-namespace --wait --timeout=120s
+
+      - name: Wait for Redis rollout
+        run: kubectl rollout status deployment/pet-challenge-redis -n pet-challenge --timeout=120s
+
+      - name: Wait for app rollout
+        run: kubectl rollout status deployment/pet-challenge -n pet-challenge --timeout=120s
+
+      - name: Smoke test health endpoint
+        run: |
+          kubectl port-forward -n pet-challenge svc/pet-challenge 8080:8080 &
+          PF_PID=$!
+          for i in $(seq 1 15); do
+            if curl -fs http://localhost:8080/actuator/health; then
+              echo "App is healthy"
+              kill $PF_PID
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App failed health check"
+          kubectl logs -n pet-challenge deployment/pet-challenge
+          kill $PF_PID
+          exit 1
+
+      - name: Delete kind cluster
+        if: always()
+        run: kind delete cluster

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pet-challenge-config
+  namespace: {{ .Values.namespace }}
+data:
+  PETSTORE_BASE_URL: {{ .Values.config.petstoreBaseUrl | quote }}
+  SPRING_DATA_REDIS_HOST: "pet-challenge-redis"
+  SPRING_DATA_REDIS_PORT: {{ .Values.redis.containerPort | quote }}

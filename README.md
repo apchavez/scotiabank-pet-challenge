@@ -3,7 +3,7 @@
 Proyecto Spring Boot que resuelve las actividades del desafío técnico
 (consumo de la API pública de Petstore vía dos endpoints REST propios),
 llevado más allá del alcance mínimo pedido: resiliencia, observabilidad,
-tests en 4 capas, Docker y provisión local vía Terraform.
+tests en 4 capas, Docker y despliegue local en Kubernetes.
 
 ## Stack
 
@@ -19,9 +19,9 @@ tests en 4 capas, Docker y provisión local vía Terraform.
 | Docs              | springdoc-openapi (Swagger UI)                       |
 | Tests             | JUnit 5, Mockito, MockRestServiceServer, WireMock    |
 | Contenedor        | Docker (multi-stage build) + Docker Compose (app+Redis) |
-| IaC local         | Terraform (provider `kreuzwerker/docker`)            |
+| Orquestación local| Kubernetes (Helm chart en `chart/`, pensado para `kind`/`minikube`) |
 | API testing       | Colección Postman                                    |
-| CI                | GitHub Actions (build+test, `terraform validate`)    |
+| CI                | GitHub Actions (build+test, validación de manifiestos K8s) |
 
 ## Estructura
 
@@ -222,29 +222,35 @@ docker run -p 8080:8080 pet-challenge
 Ver también la sección [Ejecutar](#ejecutar) para `docker compose up --build`
 (app + Redis).
 
-## Terraform (provisión local)
+## Kubernetes (despliegue local)
 
-Alternativa a los comandos Docker de arriba, gestionada como IaC:
+Alternativa a los comandos Docker de arriba, orquestada con un Helm chart:
 
 ```
-cd terraform
-terraform init
-terraform apply
+kind create cluster --name pet-challenge
+docker build -t pet-challenge:local .
+kind load docker-image pet-challenge:local --name pet-challenge
+helm upgrade --install pet-challenge ./chart --namespace pet-challenge --create-namespace --wait
 ```
 
-Ver `terraform/README.md` para detalle de variables y por qué el build de
-la imagen se hace vía `local-exec` en vez del `build {}` nativo del
-provider.
+Chart en `chart/`: `Chart.yaml`, `values.yaml` (imagen, réplicas, puertos,
+config de Redis parametrizables) y `templates/` (`namespace.yaml`,
+`configmap.yaml`, `redis.yaml` — Deployment + Service de Redis — y `app.yaml`
+— Deployment + Service NodePort de la app, con readiness/liveness probes
+sobre `/actuator/health`). La app queda expuesta en `http://localhost:30080`
+(con `kind` + `extraPortMappings` o `kubectl port-forward`).
 
 ## CI
 
-`.github/workflows/ci.yml` corre tres jobs en cada push/PR:
+`.github/workflows/ci.yml` corre en cada push/PR:
 - `build` — `./gradlew build` (compila + tests).
 - `postman-smoke-test` — levanta la app real (con `APP_API_KEY` fijo para
   que coincida con el `apiKey` del environment de Postman) y corre la
   colección con Newman contra `https://petstore.swagger.io` real.
-- `terraform-validate` — `fmt -check` + `init -backend=false` + `validate`
-  sobre `terraform/`.
+- `k8s-smoke-test` — levanta un cluster `kind` efímero, construye y carga
+  la imagen, hace `helm upgrade --install` del chart, espera el rollout de
+  Redis y de la app, y corre un smoke test HTTP real contra
+  `/actuator/health` antes de destruir el cluster.
 
 ## Qué demuestra este proyecto
 
@@ -257,5 +263,5 @@ provider.
   circuit breaker) — no solo el happy path del enunciado.
 - Testing en 4 capas (unitario de servicio, HTTP client con mock server,
   web layer, end-to-end con WireMock) más una colección Postman ejecutable.
-- Empaquetado reproducible (Docker multi-stage) y provisión local como
-  código (Terraform), no solo instrucciones manuales.
+- Empaquetado reproducible (Docker multi-stage) y despliegue local como
+  código (Helm chart de Kubernetes), no solo instrucciones manuales.
