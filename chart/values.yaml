@@ -1,0 +1,38 @@
+namespace: pet-challenge
+
+app:
+  image:
+    repository: pet-challenge
+    tag: local
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  containerPort: 8080
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30080
+  probes:
+    readiness:
+      path: /actuator/health
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    liveness:
+      path: /actuator/health
+      initialDelaySeconds: 20
+      periodSeconds: 15
+
+config:
+  petstoreBaseUrl: "https://petstore.swagger.io/v2"
+
+redis:
+  image:
+    repository: redis
+    tag: 7-alpine
+  containerPort: 6379
+  probes:
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    liveness:
+      initialDelaySeconds: 10
+      periodSeconds: 15
